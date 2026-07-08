@@ -1,0 +1,26 @@
+# Backend Dependencies for Dependency Upgrade Advisor
+# Install with: pip install -r requirements.txt
+
+# Web framework — FastAPI is modern, fast, and auto-generates API docs
+fastapi==0.115.0
+
+# ASGI server — runs the FastAPI application
+uvicorn[standard]==0.30.0
+
+# HTTP client — used for calling PyPI and OSV.dev APIs
+httpx==0.28.1
+
+# Version parsing — safely compares Python version strings (e.g., "2.10" > "2.9")
+packaging==24.1
+
+# Google Gemini SDK — for calling the Gemini LLM API
+google-genai==1.9.0
+
+# LangGraph — orchestrates the multi-step agent pipeline with parallel execution
+langgraph==0.2.60
+
+# File upload support for FastAPI
+python-multipart==0.0.9
+
+# Pydantic for data validation (required by FastAPI)
+pydantic==2.9.0
