@@ -12,6 +12,7 @@ handles this correctly.
 """
 
 from packaging.version import Version, InvalidVersion  # Safe semantic version parsing
+from packaging.specifiers import SpecifierSet, InvalidSpecifier  # For checking Python version compatibility
 from datetime import datetime, timezone  # For checking how recently a package was updated
 
 
@@ -151,3 +152,134 @@ def analyze_and_score(
         "risk_level": risk_level,
         "confidence_level": confidence_level
     }
+
+
+# ══════════════════════════════════════════════════════════════════════
+# NEW: Check if a package version is compatible with the current Python
+# ══════════════════════════════════════════════════════════════════════
+
+def is_python_compatible(requires_python: str, current_python: str) -> bool:
+    """
+    Check if the current Python version satisfies a package's Python requirement.
+
+    Uses packaging.specifiers.SpecifierSet to parse requirement strings like
+    ">=3.8" or ">=3.7,<4.0" and check if the current Python version matches.
+
+    We default to True (assume compatible) in these cases:
+    - requires_python is empty or "Not specified"
+    - The specifier string can't be parsed (malformed)
+
+    This is safer than defaulting to False, which would incorrectly skip
+    valid upgrade candidates.
+
+    Args:
+        requires_python: The requires_python string from PyPI (e.g., ">=3.8").
+        current_python: The current Python version string (e.g., "3.9.7").
+
+    Returns:
+        True if compatible (or unknown), False if definitely incompatible.
+    """
+    # If no requirement is specified, assume compatible (most packages work broadly)
+    if not requires_python or requires_python == "Not specified":
+        return True
+
+    try:
+        # Parse the requirement specifier (e.g., ">=3.8" becomes a SpecifierSet)
+        specifier = SpecifierSet(requires_python)
+        # Check if the current Python version satisfies the requirement
+        return Version(current_python) in specifier
+    except (InvalidSpecifier, InvalidVersion):
+        # If we can't parse either string, assume compatible to avoid
+        # incorrectly skipping valid upgrade candidates
+        return True
+
+
+# ══════════════════════════════════════════════════════════════════════
+# NEW: Find the minimum safe version to upgrade to (not the latest)
+# ══════════════════════════════════════════════════════════════════════
+
+def find_minimum_safe_version(
+    package_name: str,
+    current_version: str,
+    all_versions: list,
+    cves: list,
+    current_python: str
+) -> str:
+    """
+    Find the minimum (earliest) version newer than current that fixes known CVEs.
+
+    Instead of always recommending the latest version (which could be a major
+    upgrade with breaking changes), this function finds the FIRST version after
+    the current one that's compatible with the user's Python version. This is
+    the "minimum safe upgrade" — the smallest change needed to fix vulnerabilities.
+
+    If no CVEs are found, returns None (no urgent upgrade needed).
+
+    The function:
+    1. Sorts all versions using packaging.version.Version (semantic ordering)
+    2. Filters out versions older than or equal to the current version
+    3. Checks each candidate's Python compatibility via get_python_requirement
+    4. Returns the first compatible newer version
+
+    Args:
+        package_name: The package name (used to fetch Python requirements).
+        current_version: The currently installed version string.
+        all_versions: List of all version strings from PyPI.
+        cves: List of CVE IDs found for the current version.
+        current_python: The current Python version string (e.g., "3.9.7").
+
+    Returns:
+        The minimum safe version string, or None if no CVEs or no candidate found.
+    """
+    # Import here to avoid circular imports — fetcher is a sibling module
+    from utils.fetcher import get_python_requirement
+
+    # If no CVEs exist, there's no urgent need to find a minimum safe version
+    if not cves or len(cves) == 0:
+        return None
+
+    # If we don't have version data, we can't determine a safe version
+    if not current_version or not all_versions:
+        return None
+
+    try:
+        # Parse the current version for comparison
+        current = Version(current_version)
+    except InvalidVersion:
+        # Can't parse the current version — return None instead of crashing
+        return None
+
+    # Sort all versions using semantic versioning (not string sorting!)
+    # This ensures "2.10" comes after "2.9", not before it
+    sorted_versions = []
+    for v_str in all_versions:
+        try:
+            sorted_versions.append((Version(v_str), v_str))  # Keep the original string too
+        except InvalidVersion:
+            # Skip versions with non-standard format (e.g., "2.0rc1")
+            continue
+
+    # Sort by the parsed Version objects (ascending order)
+    sorted_versions.sort(key=lambda x: x[0])
+
+    # Filter: only keep versions that are NEWER than the current version
+    candidates = [(v, v_str) for v, v_str in sorted_versions if v > current]
+
+    # Check each candidate version's Python compatibility, starting from the oldest
+    for candidate_version, candidate_str in candidates:
+        try:
+            # Fetch the Python requirement for this specific version from PyPI
+            requires_python = get_python_requirement(package_name, candidate_str)
+
+            # Check if this version is compatible with the user's Python
+            if is_python_compatible(requires_python, current_python):
+                # Found the minimum safe version — return it
+                return candidate_str
+        except Exception:
+            # If we can't check compatibility for this version, skip it
+            # and try the next one instead of crashing
+            continue
+
+    # No compatible newer version found — return None
+    return None
+
