@@ -99,3 +99,61 @@ def fetch_pypi_info(package_name: str) -> dict:
             "last_updated": None,
             "error": f"Unexpected error fetching '{package_name}': {str(e)}"
         }
+
+
+# ══════════════════════════════════════════════════════════════════════
+# NEW: Fetch the Python version requirement for a specific package version
+# ══════════════════════════════════════════════════════════════════════
+
+def get_python_requirement(package_name: str, version: str) -> str:
+    """
+    Fetch the requires_python field for a specific version of a package from PyPI.
+
+    Calls https://pypi.org/pypi/{package_name}/{version}/json to get the
+    version-specific metadata, then extracts the "requires_python" field.
+    This tells us which Python versions are compatible with that package version
+    (e.g., ">=3.8" means Python 3.8 or newer is required).
+
+    Args:
+        package_name: The name of the package (e.g., "flask").
+        version: The specific version to check (e.g., "3.0.0").
+
+    Returns:
+        The requires_python string (e.g., ">=3.8"), or "Not specified" if
+        the field is missing or the request fails.
+    """
+    # Build the version-specific PyPI URL — note the version in the path
+    url = f"https://pypi.org/pypi/{package_name}/{version}/json"
+
+    try:
+        # Make the HTTP GET request with a 10-second timeout
+        response = httpx.get(url, timeout=10.0, follow_redirects=True)
+
+        # If this specific version doesn't exist on PyPI, return gracefully
+        if response.status_code == 404:
+            return "Not specified"
+
+        # Raise for other HTTP errors (500, 403, etc.)
+        response.raise_for_status()
+
+        # Parse the response and extract the requires_python field
+        data = response.json()
+        requires_python = data.get("info", {}).get("requires_python")
+
+        # If the field is missing or empty, return a clear default
+        if not requires_python:
+            return "Not specified"
+
+        return requires_python
+
+    except httpx.TimeoutException:
+        # PyPI took too long — return safe default instead of crashing
+        return "Not specified"
+
+    except httpx.HTTPError:
+        # HTTP-level error — return safe default
+        return "Not specified"
+
+    except Exception:
+        # Any unexpected error — return safe default (never crash the pipeline)
+        return "Not specified"
