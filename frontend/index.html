@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- Makes the page responsive on mobile devices -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- SEO: Descriptive title for search engines and browser tabs -->
+    <title>Dependency Upgrade Advisor — Scan Python Dependencies</title>
+    <!-- SEO: Meta description for search engine results -->
+    <meta name="description" content="Scan your Python requirements.txt for outdated packages, security vulnerabilities, and get AI-powered upgrade recommendations." />
+    <!-- Load the Tailwind CSS framework via CDN for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Configure Tailwind's dark mode to use the 'class' strategy -->
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            // Custom color palette for our dark theme
+            colors: {
+              surface: {
+                900: '#0a0e1a',
+                800: '#111827',
+                700: '#1e293b',
+                600: '#334155',
+              },
+              accent: {
+                400: '#818cf8',
+                500: '#6366f1',
+                600: '#4f46e5',
+              }
+            },
+            // Custom font — Inter is clean and modern
+            fontFamily: {
+              sans: ['Inter', 'system-ui', 'sans-serif'],
+            }
+          }
+        }
+      }
+    </script>
+    <!-- Load Inter font from Google Fonts for premium typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+    <!-- Custom styles that can't be done with Tailwind utilities alone -->
+    <style>
+      /* Smooth fade-in animation for cards appearing on screen */
+      @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .animate-fade-in-up {
+        animation: fadeInUp 0.5s ease-out forwards;
+      }
+      /* Staggered animation delay — each card appears slightly after the previous one */
+      .stagger-1 { animation-delay: 0.1s; }
+      .stagger-2 { animation-delay: 0.2s; }
+      .stagger-3 { animation-delay: 0.3s; }
+      /* Pulsing glow effect for the scan button */
+      @keyframes pulse-glow {
+        0%, 100% { box-shadow: 0 0 20px rgba(99, 102, 241, 0.3); }
+        50% { box-shadow: 0 0 40px rgba(99, 102, 241, 0.6); }
+      }
+      .pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+      /* Spinning animation for the loading indicator */
+      @keyframes spin { to { transform: rotate(360deg); } }
+      .animate-spin { animation: spin 1s linear infinite; }
+      /* Glassmorphism effect — frosted glass look */
+      .glass {
+        background: rgba(17, 24, 39, 0.7);
+        backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      /* Custom scrollbar styling for dark theme */
+      ::-webkit-scrollbar { width: 8px; }
+      ::-webkit-scrollbar-track { background: #0a0e1a; }
+      ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+      ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    </style>
+  </head>
+  <body class="bg-surface-900 text-gray-100 font-sans min-h-screen">
+    <!-- React app mounts into this div -->
+    <div id="root"></div>
+    <!-- Load the React application entry point -->
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
